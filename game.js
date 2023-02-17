@@ -15,7 +15,7 @@ let walls;
 let player;
 let enemies;
 
-// De
+// Initialize some params
 let startingMass = 2;
 let numEnemies = 10;
 let drag = 0.1;
