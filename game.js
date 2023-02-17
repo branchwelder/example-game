@@ -15,7 +15,7 @@ let walls;
 let player;
 let enemies;
 
-// De
+// Initialize some params
 let startingMass = 2;
 let numEnemies = 10;
 let drag = 0.1;
@@ -112,6 +112,6 @@ function checkSize(player, enemy) {
     enemy.remove();
     console.log("nom nom nom");
   } else {
-    alert("GAME OVER! YOU GOT EATEN!");
+    console.log("GAME OVER! YOU GOT EATEN!");
   }
 }
