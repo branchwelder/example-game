@@ -1,14 +1,14 @@
 // Declare some color constants
-const rainbow = {
+const colors = {
   red: "#BF616A",
   orange: "#D08770",
   yellow: "#EBCB8B",
   green: "#A3BE8C",
   blue: "#5E81AC",
   purple: "#B48EAD",
+  background: "#2E3440",
+  foreground: "#ECEFF4",
 };
-
-const base = { background: "#2E3440", foreground: "#ECEFF4" };
 
 // Declare sprite variables
 let walls;
@@ -20,7 +20,7 @@ let startingMass = 2;
 let numEnemies = 10;
 let drag = 0.1;
 let impulse = 0.2;
-let massSizeMultiplier = 20;
+let massSizeMultiplier = 15;
 
 function setup() {
   new Canvas(windowWidth, windowHeight);
@@ -29,10 +29,14 @@ function setup() {
   setupPlayer();
   setupEnemies();
   setupCollisions();
+
+  for (const enemy of enemies) {
+    enemyMotion(enemy);
+  }
 }
 
 function draw() {
-  background(base.background);
+  background(colors.background);
 
   handlePlayerMove();
 }
@@ -63,15 +67,15 @@ function setupBounds() {
     "static"
   );
 
-  walls.color = base.background;
+  walls.color = colors.background;
 }
 
 function setupPlayer() {
   // Creating the player sprite
   player = new Sprite();
-  player.color = rainbow.yellow;
+  player.color = colors.yellow;
   player.mass = startingMass;
-  player.diameter = player.mass * massSizeMultiplier;
+  player.diameter = startingMass * massSizeMultiplier;
   player.bounciness = 1;
 }
 
@@ -79,7 +83,7 @@ function setupEnemies() {
   // Make enemies
   enemies = new Group();
   enemies.amount = numEnemies;
-  enemies.color = rainbow.red;
+  enemies.color = colors.red;
   enemies.mass = () => random(1, 5);
   enemies.diameter = (index) => enemies[index].mass * massSizeMultiplier;
   enemies.x = (index) => random(0, width - enemies[index].diameter);
@@ -113,5 +117,13 @@ function checkSize(player, enemy) {
     console.log("nom nom nom");
   } else {
     console.log("GAME OVER! YOU GOT EATEN!");
+    player.remove();
   }
+}
+
+async function enemyMotion(enemy) {
+  let x = random(0, width);
+  let y = random(0, height);
+  await enemy.moveTo(x, y, 1);
+  enemyMotion(enemy);
 }
