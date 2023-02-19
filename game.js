@@ -12,33 +12,149 @@ const colors = {
 
 // Declare sprite variables
 let walls;
-let player;
-let enemies;
+let player, enemies, food, friends;
 
 // Initialize some params
 let startingMass = 2;
 let numEnemies = 10;
 let drag = 0.1;
 let impulse = 0.2;
-let massSizeMultiplier = 15;
+let foodSize = 15;
+let playerSize = 20;
+
+let maxFood = 30;
+
+let foodChance = 0.02;
+let sizeThreshold = 5;
+
+const gameOverMessage = "Oh dear, you are dead!";
+let gameOver = false;
+let finalScore = 0;
+
+let scoreSize = 32;
 
 function setup() {
   new Canvas(windowWidth, windowHeight);
   noStroke();
   setupBounds();
   setupPlayer();
+  setupFriends();
+  setupFood();
   setupEnemies();
-  setupCollisions();
 
-  for (const enemy of enemies) {
-    enemyMotion(enemy);
-  }
+  player.overlapping(enemies, siphon);
+  enemies.overlapping(enemies, siphon);
+
+  player.overlapping(food, eat);
+  enemies.overlapping(food, eat);
 }
 
 function draw() {
+  // Turning off the background has a fun effect!
   background(colors.background);
-
   handlePlayerMove();
+  handleEnemyMove();
+
+  if (food.length < maxFood) {
+    if (random() < foodChance) new food.Sprite();
+  }
+
+  drawScore();
+}
+
+function drawScore() {
+  textAlign(RIGHT, TOP);
+  textSize(scoreSize);
+  let wordWidth = textWidth(finalScore);
+  fill(colors.purple);
+  rectMode(CORNERS);
+  rect(width, 0, width - wordWidth - 20, scoreSize + 20, 20);
+  fill(colors.foreground);
+  text(finalScore, width - 10, 10);
+}
+
+function endGame() {
+  // let message1 = `Oh dear, you are dead!`;
+  let scoreMessage = `Final score: ${finalScore}`;
+  let messageWidth = textWidth(scoreMessage);
+
+  // Draw background rect
+  fill(colors.purple);
+  rectMode(CENTER);
+  rect(width / 2, height / 2, messageWidth + 20, scoreSize + 20, 20);
+
+  // Draw Text
+  textAlign(CENTER, BOTTOM);
+  textSize(scoreSize);
+  fill(colors.foreground);
+  text(scoreMessage, width / 2, height / 2);
+
+  // Stop game
+  gameOver = true;
+  noLoop();
+}
+
+function restart() {
+  gameOver = false;
+  finalScore = 0;
+  // need to remake player sprite?
+  // start loop again
+}
+
+function handleEnemyMove() {
+  let positions = [];
+  for (const [i, enemy] of enemies.entries()) {
+    positions.push({ index: i, d: enemy.d });
+  }
+
+  let sorted = positions.sort((a, b) => (a.d > b.d ? 1 : -1));
+
+  for (const enemy of enemies) {
+    let target = enemy;
+
+    for (const [i, entry] of sorted.entries()) {
+      if (enemy.d > entry.d) {
+        target = enemies[sorted[i].index];
+      } else {
+        break;
+      }
+    }
+    enemy.moveTowards(target, 0.001);
+  }
+}
+
+function updateScore(newScore) {
+  if (newScore > finalScore) finalScore = Math.ceil(newScore);
+}
+
+function siphon(good, evil) {
+  if (good.d > evil.d) {
+    good.d += 0.5;
+    evil.d -= 0.5;
+    if (good.idNum === player.idNum) updateScore(good.d);
+  } else {
+    good.d -= 0.5;
+    evil.d += 0.5;
+    if (evil.idNum === player.idNum) updateScore(evil.d);
+  }
+
+  if (good.d < sizeThreshold) {
+    if (good.idNum === player.idNum) endGame();
+    good.remove();
+  }
+  if (evil.d < sizeThreshold) {
+    if (evil.idNum === player.idNum) endGame();
+    evil.remove();
+  }
+}
+
+function eat(spr, food) {
+  spr.d += 0.5;
+  food.d -= 0.5;
+
+  if (spr.idNum === player.idNum) updateScore(spr.d);
+
+  if (food.d < sizeThreshold) food.remove();
 }
 
 function handlePlayerMove() {
@@ -71,59 +187,38 @@ function setupBounds() {
 }
 
 function setupPlayer() {
-  // Creating the player sprite
   player = new Sprite();
   player.color = colors.yellow;
-  player.mass = startingMass;
-  player.diameter = startingMass * massSizeMultiplier;
+  player.d = playerSize;
   player.bounciness = 1;
+  finalScore = player.d;
+}
+
+function setupFood() {
+  food = new Group();
+  food.color = colors.green;
+  food.d = foodSize;
+  food.x = () => random(0, width - foodSize);
+  food.y = () => random(0, height - foodSize);
+  food.amount = maxFood;
+}
+
+function setupFriends() {
+  friends = new Group();
+  friends.amount = numEnemies;
+  friends.color = colors.blue;
+  friends.d = () => random(20, 100);
+  friends.x = (index) => random(0, width - friends[index].d);
+  friends.y = (index) => random(0, height - friends[index].d);
+  friends.bounciness = 1;
 }
 
 function setupEnemies() {
-  // Make enemies
   enemies = new Group();
   enemies.amount = numEnemies;
   enemies.color = colors.red;
-  enemies.mass = () => random(1, 5);
-  enemies.diameter = (index) => enemies[index].mass * massSizeMultiplier;
-  enemies.x = (index) => random(0, width - enemies[index].diameter);
-  enemies.y = (index) => random(0, height - enemies[index].diameter);
+  enemies.d = () => random(20, 100);
+  enemies.x = (index) => random(0, width - enemies[index].d);
+  enemies.y = (index) => random(0, height - enemies[index].d);
   enemies.bounciness = 1;
-}
-
-function setupCollisions() {
-  // Set up collision callbacks
-  enemies.collides(enemies, enemyEat);
-  player.collides(enemies, checkSize);
-}
-
-function enemyEat(enemy, enemy2) {
-  if (enemy.mass > enemy2.mass) {
-    enemy.mass += enemy2.mass;
-    // Update diameter to reflect new mass
-    enemy.diameter = enemy.mass * massSizeMultiplier;
-    // Remove the eaten enemy
-    enemy2.remove();
-  }
-}
-
-function checkSize(player, enemy) {
-  if (player.mass > enemy.mass) {
-    player.mass += enemy.mass;
-    // Update diameter to reflect new mass
-    player.diameter = player.mass * massSizeMultiplier;
-    // Remove the eaten enemy
-    enemy.remove();
-    console.log("nom nom nom");
-  } else {
-    console.log("GAME OVER! YOU GOT EATEN!");
-    player.remove();
-  }
-}
-
-async function enemyMotion(enemy) {
-  let x = random(0, width);
-  let y = random(0, height);
-  await enemy.moveTo(x, y, 1);
-  enemyMotion(enemy);
 }
